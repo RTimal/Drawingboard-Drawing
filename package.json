@@ -1,0 +1,21 @@
+{
+  "name": "RTDrawingBoarddraw",
+  "description": "Drawing Board Drawing Server",
+  "version": "0.3.0-18",
+  "private": true,
+  "dependencies": {
+    "express": "3.0.1",
+    "express-hbs": "0.1.1",
+    "socket.io": "0.9.10",
+    "jitsu": "*",
+    "mongoose": "3.5.2",
+    "knox": "*"
+  },
+  "subdomain": "rtdrawingboarddraw",
+  "scripts": {
+    "start": "drawingserver.js"
+  },
+  "engines": {
+    "node": "0.6.x"
+  }
+}
