@@ -1,9 +1,28 @@
-var express = require('express'),
-	app = express(),
-	server = require('http').createServer(app),
-	io = require('socket.io').listen(server),
-	hbs = require('express-hbs'),
-	users = {};
+var express = require('express')
+	, app = express()
+	, server = require('http').createServer(app)
+	, io = require('socket.io').listen(server)
+	, hbs = require('express-hbs')
+	, RedisStore = require('socket.io/lib/stores/redis')
+	, redis = require('socket.io/node_modules/redis')
+	, pub = redis.createClient(9640, "slimehead.redistogo.com")
+	, sub = redis.createClient(9640, "slimehead.redistogo.com")
+	, store = redis.createClient(9640, "slimehead.redistogo.com")
+	, users = {};
+
+	var redisPW = "29d8ef9d6aac3c1f549467a43e82def8";
+
+	pub.auth(redisPW, function (err) { if (err) throw err; });
+	sub.auth(redisPW, function (err) { if (err) throw err; });
+	store.auth(redisPW, function (err) { if (err) throw err; });
+
+	io.set('store', new RedisStore({
+		 // redis : redis, 
+		  redisPub: pub,
+		  redisSub: sub,
+		  redisClient: store
+	}));
+
 
 //io.set('log level', 1);
 app.engine('hbs', hbs.express3({partialsDir: __dirname + '/views/partials'}));
@@ -16,53 +35,63 @@ app.use(express.static(__dirname + '/public'));
 var port;
 switch(process.env.NODE_ENV) {
 	case "production":
-		port = 80
+		port = 80;
 		break;
 	default: 
-		port = 82
+		port = 82;
 		break;
 	}
 
 server.listen(port);
 
-io.sockets.on('connection', function (socket) {
-
-	socket.on('getusers', function (data) {
-		socket.emit('userlist', JSON.stringify(users));
+io.sockets.on('connection', function (client) {
+	
+	client.on('getusers', function (data) {
+		client.emit('userlist', JSON.stringify(users));
 	});
 
-	socket.on('join', function (user) {
+	client.on('join', function (user) {
 		u = JSON.parse(user);
-		socket.join(u.room);
+		u.message = "adduser";
+		client.join(u.room);
+		//setTimeout(1000)
 		users[u.uid] = u;
-		io.sockets.in(u.room).emit('adduser', user);
+		//client.broadcast.to(u.room).json.send(JSON.stringify(u));
+		client.broadcast.to(u.room).emit('adduser' , user);
+		client.emit('adduser', user);
 	});
 
-	socket.on('leave', function (uid) {
-		io.sockets.in(users[uid].room).emit('removeuser', uid);
-		socket.leave(users[uid].room);
+	client.on('leave', function (uid) {
+		io.clients.in(users[uid].room).emit('removeuser', uid);
+			//client.broadcast.to(Room).json.send({ msg: "Se conecto al room: " + nick.room, nick : nick });
+		client.leave(users[uid].room);
 		users[uid] = null;
 	 });
 
-	socket.on('mousedown', function (drawevent) {
-		this.broadcast.to(drawevent.room).emit('mousedown' , drawevent);
+	client.on('mousedown', function (drawevent) {
+		//get room from userlist
+		client.broadcast.to(drawevent.room).emit('mousedown' , drawevent);
 	});
 
-	socket.on('mouseup', function (drawevent) {
-		this.broadcast.to(drawevent.room).emit('mouseup' , drawevent);
+	client.on('mouseup', function (drawevent) {
+
+		client.broadcast.to(drawevent.room).emit('mouseup' , drawevent);
 	});
 
-	socket.on('mousemove', function (drawevent) {
-		this.broadcast.to(drawevent.room).emit('mousemove' , drawevent);
+	client.on('mousemove', function (drawevent) {
+
+		client.broadcast.to(drawevent.room).emit('mousemove' , drawevent);
 	});
 
-	socket.on('changebrushcolor', function (colorinfo) {
+	client.on('changebrushcolor', function (colorinfo) {
+
 		users[colorinfo.uid].brushData.brushColor = colorinfo.c;
-		this.broadcast.to(users[colorinfo.uid].room).emit('changebrushcolor', colorinfo);
+		client.broadcast.to(users[colorinfo.uid].room).emit('changebrushcolor', colorinfo);
 	})
 
-	socket.on('changebrushwidth', function (widthinfo) {
+	client.on('changebrushwidth', function (widthinfo) {
+
 		users[widthinfo.uid].brushData.brushWidth = widthinfo.w;
-		this.broadcast.to(users[widthinfo.uid].room).emit('changebrushwidth', widthinfo);
+		client.broadcast.to(users[widthinfo.uid].room).emit('changebrushwidth', widthinfo);
 	})
 });
