@@ -44,54 +44,51 @@ switch(process.env.NODE_ENV) {
 
 server.listen(port);
 
-io.sockets.on('connection', function (client) {
+io.sockets.on('connection', function (socket) {
 	
-	client.on('getusers', function (data) {
-		client.emit('userlist', JSON.stringify(users));
+	socket.on('getusers', function (data) {
+		socket.emit('userlist', JSON.stringify(users));
 	});
 
-	client.on('join', function (user) {
+	socket.on('join', function (user) {
 		u = JSON.parse(user);
 		u.message = "adduser";
-		client.join(u.room);
+		socket.join(u.room);
 		//setTimeout(1000)
 		users[u.uid] = u;
-		//client.broadcast.to(u.room).json.send(JSON.stringify(u));
-		client.broadcast.to(u.room).emit('adduser' , user);
-		client.emit('adduser', user);
+		//socket.broadcast.to(u.room).json.send(JSON.stringify(u));
+		socket.broadcast.to(u.room).emit('adduser' , user);
+		socket.emit('adduser', user);
 	});
 
-	client.on('leave', function (uid) {
-		io.clients.in(users[uid].room).emit('removeuser', uid);
-			//client.broadcast.to(Room).json.send({ msg: "Se conecto al room: " + nick.room, nick : nick });
-		client.leave(users[uid].room);
+	socket.on('leave', function (uid) {
+		io.sockets.in(users[uid].room).emit('removeuser', uid);
+			//socket.broadcast.to(Room).json.send({ msg: "Se conecto al room: " + nick.room, nick : nick });
+		socket.leave(users[uid].room);
 		users[uid] = null;
 	 });
 
-	client.on('mousedown', function (drawevent) {
+	socket.on('mousedown', function (drawevent) {
 		//get room from userlist
-		client.broadcast.to(drawevent.room).emit('mousedown' , drawevent);
+		socket.broadcast.to(drawevent.room).emit('mousedown' , drawevent);
 	});
 
-	client.on('mouseup', function (drawevent) {
-
-		client.broadcast.to(drawevent.room).emit('mouseup' , drawevent);
+	socket.on('mouseup', function (drawevent) {
+		socket.broadcast.to(drawevent.room).emit('mouseup' , drawevent);
 	});
 
-	client.on('mousemove', function (drawevent) {
-
-		client.broadcast.to(drawevent.room).emit('mousemove' , drawevent);
+	socket.on('mousemove', function (drawevent) {
+		socket.broadcast.to(drawevent.room).emit('mousemove' , drawevent);
 	});
 
-	client.on('changebrushcolor', function (colorinfo) {
+	socket.on('changebrushcolor', function (colorinfo) {
 
 		users[colorinfo.uid].brushData.brushColor = colorinfo.c;
-		client.broadcast.to(users[colorinfo.uid].room).emit('changebrushcolor', colorinfo);
+		socket.broadcast.to(users[colorinfo.uid].room).emit('changebrushcolor', colorinfo);
 	})
 
-	client.on('changebrushwidth', function (widthinfo) {
-
+	socket.on('changebrushwidth', function (widthinfo) {
 		users[widthinfo.uid].brushData.brushWidth = widthinfo.w;
-		client.broadcast.to(users[widthinfo.uid].room).emit('changebrushwidth', widthinfo);
+		socket.broadcast.to(users[widthinfo.uid].room).emit('changebrushwidth', widthinfo);
 	})
 });
